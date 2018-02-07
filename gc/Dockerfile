@@ -43,6 +43,9 @@ RUN set -xe \
       opcache \
     && true
 
+# Enable mod_rewrite
+RUN a2enmod rewrite
+
 # Add gcfuse repo.
 RUN apt-get install -y gnupg && \
     export GCSFUSE_REPO=gcsfuse-jessie && \
@@ -62,8 +65,13 @@ RUN set -xe && \
     chmod +x  /usr/local/bin/composer && \
     true
 
-# Set directory for Bedrock
+# set up required folders and permissions
+RUN mkdir -p /app/storage/ /var/www/.composer/cache
+
+# Set directory for Laravel
 WORKDIR /app
+
+RUN chown -R www-data:www-data /app /var/www/
 
 # Add WordPress rewrite to config
 ADD laravel-rewrite.conf /etc/apache2/conf-available/laravel-rewrite.conf
