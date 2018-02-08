@@ -76,6 +76,7 @@ RUN set -xe \
 # Install GD
 RUN set -xe \
     && apt-get -qq -y install \
+      libfontconfig1-dev \
       libfreetype6-dev \
       libjpeg62-turbo-dev \
       libpng-dev \
