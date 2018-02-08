@@ -1,5 +1,8 @@
 FROM php:7.2-apache
 
+# Enable mod_rewrite
+RUN a2enmod rewrite
+
 # Composer Version and SHA1 checksum
 ENV COMPOSER_VERSION=1.6.3 \
     COMPOSER_SHA256=52cb7bbbaee720471e3b34c8ae6db53a38f0b759c06078a80080db739e4dcab6
@@ -7,29 +10,47 @@ ENV COMPOSER_VERSION=1.6.3 \
 # Default environment variables
 ENV LC_ALL=C.UTF-8 \
     LANG=C.UTF-8 \
-    WP_ENV=production \
     DEFAULT_TIMEZONE=Sweden/Stockholm \
     WEBROOT=/app/public
 
+RUN apt-get -qq update
+
 # Install Laravel requirements
 RUN set -xe \
-    && apt-get -qq update \
     && apt-get -qq -y install \
       libicu-dev \
       libpq-dev \
-      zlib1g-dev \
-      libmemcached-dev \
       libxml2-dev \
-      libpng-dev \
-      libjpeg-dev \
-      libfreetype6-dev \
       openssl \
       git \
       --no-install-recommends \
-    && pecl install \
-      memcached-3.0.4 \
-    && docker-php-ext-enable \
-      memcached \
+    && docker-php-ext-install \
+      mbstring \
+      tokenizer \
+      xml \
+      intl \
+      pcntl \
+    && true
+
+# Install Opcache
+RUN set -xe \
+    && docker-php-ext-install \
+      opcache \
+    && true
+
+# Install compression packages
+RUN set -xe \
+    && apt-get -qq -y install \
+      zlib1g-dev \
+      libbz2-dev \
+      --no-install-recommends \
+    && docker-php-ext-install \
+      zip \
+      bz2 \
+    && true
+
+# Install MySQL and PostgreSQL support
+RUN set -xe \
     && docker-php-ext-configure \
       pdo_mysql --with-pdo-mysql=mysqlnd \
     && docker-php-ext-install \
@@ -37,18 +58,34 @@ RUN set -xe \
       pgsql \
       pdo_pgsql \
       pdo_mysql \
-      mbstring \
-      tokenizer \
-      xml \
-      intl \
-      pcntl \
-      zip \
-      gd \
-      opcache \
     && true
 
-# Enable mod_rewrite
-RUN a2enmod rewrite
+# Install Memcached and Redis
+RUN set -xe \
+    && apt-get -qq -y install \
+      libmemcached-dev \
+      --no-install-recommends \
+    && pecl install \
+      memcached-3.0.4 \
+      redis-3.1.6 \
+    && docker-php-ext-enable \
+      memcached \
+      redis \
+    && true
+
+# Install GD
+RUN set -xe \
+    && apt-get -qq -y install \
+      libfreetype6-dev \
+      libjpeg62-turbo-dev \
+      libpng-dev \
+    && docker-php-ext-configure \
+      gd \
+      --with-freetype-dir=/usr/include/ \
+      --with-jpeg-dir=/usr/include/ \
+    && docker-php-ext-install \
+      -j$(nproc) gd \
+    && true
 
 # Install Composer
 RUN set -xe && \
@@ -59,14 +96,22 @@ RUN set -xe && \
     chmod +x  /usr/local/bin/composer && \
     true
 
+# Set up required folders for composer installation
+RUN mkdir -p \
+    /var/www/.composer/cache \
+    /app/storage/framework/sessions \
+    /app/storage/framework/views \
+    /app/storage/framework/cache \
+    /app/storage/logs
 
-# set up required folders and permissions
-RUN mkdir -p /app/storage/ /var/www/.composer/cache
+# Set up folder permissions
+RUN chown -R www-data:www-data \
+    /var/www/.composer/cache \
+    /app \
+    /var/www/
 
 # Set directory for Laravel
 WORKDIR /app
-
-RUN chown -R www-data:www-data /app /var/www/
 
 # Add WordPress rewrite to config
 ADD laravel-rewrite.conf /etc/apache2/conf-available/laravel-rewrite.conf
@@ -101,3 +146,4 @@ ADD run.sh /run.sh
 RUN chmod +x /run.sh
 
 ENTRYPOINT ["/run.sh"]
+
