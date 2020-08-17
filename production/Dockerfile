@@ -3,9 +3,9 @@ FROM php:7.2-apache
 # Enable mod_rewrite
 RUN a2enmod rewrite
 
-# Composer Version and SHA1 checksum
-ENV COMPOSER_VERSION=1.6.3 \
-    COMPOSER_SHA256=52cb7bbbaee720471e3b34c8ae6db53a38f0b759c06078a80080db739e4dcab6
+# Composer Version and SHA256 checksum
+ENV COMPOSER_VERSION=1.10.10 \
+    COMPOSER_SHA256=8f16aa77b1236ed40855d8d141c0a939d108a939c8e73f9f32eadd3f05f181b9
 
 # Default environment variables
 ENV LC_ALL=C.UTF-8 \
@@ -18,6 +18,7 @@ RUN apt-get -qq update
 # Install Laravel requirements
 RUN set -xe \
     && apt-get -qq -y install \
+      libzip-dev \
       libicu-dev \
       libpq-dev \
       libxml2-dev \
